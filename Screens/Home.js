@@ -22,8 +22,8 @@ var today;
 TaskManager.defineTask(TASK_NAME, async () => {
 
   // fetch data here...
-  await onPressHandler();
-  await onPressHandler2();
+  await onPressHandler(0);
+  await onPressHandler2(0);
  
   return BackgroundFetch.BackgroundFetchResult.NewData
 
@@ -32,7 +32,7 @@ TaskManager.defineTask(TASK_NAME, async () => {
 const RegisterBackgroundTask = async () => {
   try {
     await BackgroundFetch.registerTaskAsync(TASK_NAME, {
-      minimumInterval: 3600, // seconds,
+      minimumInterval: 900, // seconds,
       stopOnTerminate: false, // android only,
       startOnBoot: true, // android only
     })
@@ -47,7 +47,7 @@ let dispatch;
 const API_URL = 'https://makaut1.ucanapply.com/smartexam/public/api/notice-data';
 const db = SQLite.openDatabase('db.testDb7')
 
-const onPressHandler = async () => {
+const onPressHandler = async (sw) => {
   console.log("Pressed")
   try {
     const result = await fetch(API_URL, {
@@ -73,11 +73,14 @@ const onPressHandler = async () => {
               for (let i = 0; i < json_len; i++) {
                 if (json.data[i].notice_title != temp) {
                   await schedulePushNotification("University Notice (MAKAUT)", json.data[i].notice_title);
-                  setTimeout(() => { dispatch(upgradeCities()) }, 500)
-                  setTimeout(() => { dispatch(deleteCities()) }, 1000)
-                  setTimeout(() => { dispatch(getCities()) }, 2000)
+                 // setTimeout(() => { dispatch(upgradeCities()) }, 500)
+                  setTimeout(() => { dispatch(deleteCities()) }, 500)
+                  setTimeout(() => { dispatch(getCities()) }, 1500)
                 }
                 else {
+                  if(sw == 1){
+                    await schedulePushNotification("University Notice (MAKAUT)", "No More New Messages");
+                  }
                  // await schedulePushNotification("University Notice (MAKAUT)", "No New Messages");
                   break;
                 }
@@ -96,7 +99,8 @@ const onPressHandler = async () => {
   }
 }
 
-const onPressHandler2 = async () => {
+const onPressHandler2 = async (sw) => {
+  console.log("Pressed 2")
   const axios = require("axios");
         const cheerio = require('cheerio');
         const url = "https://www.bppimt.com/all-notices";
@@ -106,14 +110,14 @@ const onPressHandler2 = async () => {
         const listItems = $(".mack_txt");
         let notices = [];
 
+        if($){
         listItems.each((idx, el) => {    
           const notice = { title: "", path: "" };     
           notice.title = $(el).children("a").text();
           notice.path = $(el).children("a").attr("href");
          notices.push(notice);
         });
-
-        if($){
+        
           db.transaction((tx) => {
             tx.executeSql(
               "SELECT Title, Path FROM Users2",
@@ -127,10 +131,12 @@ const onPressHandler2 = async () => {
                     if (notices[i].title != temp) {
                       await schedulePushNotification("College Notice (BPPIMT)", notices[i].title);
                       setTimeout(() => { dispatch(deletecollege()) }, 500)
-                      setTimeout(async() => { dispatch(await getCollege()) }, 1000)
+                      setTimeout(async() => { dispatch(await getCollege()) }, 1500)
                     }
                     else {
-                      //await schedulePushNotification("College Notice (BPPIMT)", notices[i].title);
+                      if(sw == 1){
+                      await schedulePushNotification("College Notice (BPPIMT)", "No More New Messages");
+                      }
                       break;
                     }
                   }
@@ -165,10 +171,13 @@ export default function Home() {
     let tim = today.getHours() + ":" + today.getMinutes() + ":" + today.getSeconds();
     setTime(tim)
     setTimeout(() => setLoading("Checking...."), 500)
+    await onPressHandler(1);
     setTimeout(() => setLoading("Fetching Data From MAKAUT..."), 1000)
-    setTimeout(() => setLoading("Upgrading Database...."), 2000)
-    await schedulePushNotification("University Notice (MAKAUT)", "No New Messages");
-    setTimeout(() => setLoading(" "), 4000)
+    await onPressHandler2(1);
+    setTimeout(() => setLoading("Fetching Data From BPPIMT..."), 2500)
+    setTimeout(() => setLoading("Upgrading Database...."), 4000)
+    //await schedulePushNotification("University Notice (MAKAUT)", "No New Messages");
+    setTimeout(() => setLoading(" "), 5500)
   }
 
   useEffect(() => {
@@ -218,7 +227,7 @@ export default function Home() {
             {loading}
           </Text>
           <Pressable
-            onPress={onPressHandler, timehandler}
+            onPress={timehandler}
             hitSlop={{ top: 10, bottom: 10, right: 10, left: 10 }}
             android_ripple={{ color: '#555' }}
             style={({ pressed }) => ({ backgroundColor: pressed ? '#555' : '#1b1b1c', borderRadius: 7, marginTop: 25, })}

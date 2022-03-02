@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "tracker",
-    "slug": "tracker",
+    "name": "Notify",
+    "slug": "Notify",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -25,7 +25,7 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#FFFFFF"
       },
-      "package": "com.deycharles20001.tracker"
+      "package": "com.deycharles20001.notify"
     },
     "web": {
       "favicon": "./assets/favicon.png"

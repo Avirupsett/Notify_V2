@@ -68,7 +68,7 @@ const College_Notice = () => {
 
     useEffect(async() => {
    // await scrapeData()
-   setInterval(async()=>{await setData()},5000)
+   setInterval(async()=>{await setData()},2000)
    dispatch(await getCollege())
    await setData()
     }, [])
@@ -80,9 +80,9 @@ const College_Notice = () => {
 
   const onRefresh = async() => {
     setRefreshing(true);
-    setTimeout(()=>{dispatch(deletecollege())}, 500)
-   setTimeout(async()=>{dispatch(await getCollege())}, 1000)
-    setTimeout(async()=>{await setData()}, 2500)
+   setTimeout(()=>{dispatch(deletecollege())}, 500)
+  setTimeout(async()=>{dispatch(await getCollege())}, 1500)
+   setTimeout(async()=>{await setData()}, 2500)
     wait(5000).then(() => setRefreshing(false));
   }
 

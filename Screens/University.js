@@ -24,7 +24,7 @@ export default function University({ navigation, route }) {
     const [value, setValue] = useState([]);
 
     useEffect(async() => {
-        setInterval(async()=>{await setData()},5000)
+        setInterval(async()=>{await setData()},2000)
         // await dispatch(deleteCities());
         dispatch(getCities())
         // setTimeout(()=>{dispatch(upgradeCities)}, 500)
@@ -70,11 +70,11 @@ export default function University({ navigation, route }) {
 
   const onRefresh = async() => {
     setRefreshing(true);
-    setTimeout(()=>{dispatch(upgradeCities)}, 500)
-    setTimeout(()=>{dispatch(deleteCities())}, 1000)
-    setTimeout(()=>{dispatch(getCities())}, 2000)
-    setTimeout(async()=>{await setData()}, 4000)
-    wait(6000).then(() => setRefreshing(false));
+   // setTimeout(()=>{dispatch(upgradeCities)}, 500)
+    setTimeout(()=>{dispatch(deleteCities())}, 500)
+    setTimeout(()=>{dispatch(getCities())}, 1500)
+    setTimeout(async()=>{await setData()}, 3500)
+    wait(5000).then(() => setRefreshing(false));
   }
 
     return (
