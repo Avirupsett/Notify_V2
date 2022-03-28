@@ -1,12 +1,17 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { StyleSheet, Text, View, ImageBackground, Image, Pressable } from 'react-native';
+import { StyleSheet, Text, View, ImageBackground,Alert, Pressable } from 'react-native';
 import { useSelector, useDispatch } from 'react-redux';
-import { getCities, upgradeCities, deleteCities, deletecollege, getCollege } from '../redux/actions';
+import { getCities, upgradeCities, deleteCities, deletecollege, getCollege,refreshcities,refreshcollege,getWbunive,deleteWbunive,refreshWbunive } from '../redux/actions';
 import * as BackgroundFetch from "expo-background-fetch"
 import * as TaskManager from "expo-task-manager"
 import * as Notifications from 'expo-notifications';
 import * as SQLite from 'expo-sqlite';
 import Constants from 'expo-constants';
+import * as Battery from 'expo-battery';
+import * as Network from 'expo-network';
+import { startActivityAsync, ActivityAction,ResultCode } from 'expo-intent-launcher';
+import LottieView from 'lottie-react-native';
+
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -24,6 +29,7 @@ TaskManager.defineTask(TASK_NAME, async () => {
   // fetch data here...
   await onPressHandler(0);
   await onPressHandler2(0);
+  await onPressHandler3(0);
  
   return BackgroundFetch.BackgroundFetchResult.NewData
 
@@ -72,14 +78,15 @@ const onPressHandler = async (sw) => {
               var temp = results.rows.item(0).Title
               for (let i = 0; i < json_len; i++) {
                 if (json.data[i].notice_title != temp) {
-                  await schedulePushNotification("University Notice (MAKAUT)", json.data[i].notice_title);
+                  await schedulePushNotification("Exam Notice (MAKAUT)", json.data[i].notice_title);
                  // setTimeout(() => { dispatch(upgradeCities()) }, 500)
-                  setTimeout(() => { dispatch(deleteCities()) }, 500)
-                  setTimeout(() => { dispatch(getCities()) }, 1500)
+                  dispatch(await refreshcities(true))
+                  setTimeout(async() => { dispatch(await deleteCities()) }, 500)
+                  setTimeout(async() => { dispatch(await getCities()) }, 1500)
                 }
                 else {
                   if(sw == 1){
-                    await schedulePushNotification("University Notice (MAKAUT)", "No More New Messages");
+                    await schedulePushNotification("Exam Notice (MAKAUT)", "No More New Messages");
                   }
                  // await schedulePushNotification("University Notice (MAKAUT)", "No New Messages");
                   break;
@@ -98,6 +105,8 @@ const onPressHandler = async (sw) => {
     console.log(error)
   }
 }
+
+var ch
 
 const onPressHandler2 = async (sw) => {
   console.log("Pressed 2")
@@ -128,10 +137,14 @@ const onPressHandler2 = async (sw) => {
                 if (len > 0) {
                   var temp = results.rows.item(0).Title
                   for (let i = 0; i < notices.length; i++) {
-                    if (notices[i].title != temp) {
+                    // console.log("ch"+ch)
+                    // ch="hello"
+                    if (notices[i].title != temp && ch != notices[i].title ) {
+                      ch=notices[i].title 
                       await schedulePushNotification("College Notice (BPPIMT)", notices[i].title);
-                      setTimeout(() => { dispatch(deletecollege()) }, 500)
-                      setTimeout(async() => { dispatch(await getCollege()) }, 1500)
+                      dispatch(await refreshcollege(true))
+                      setTimeout(async() => { dispatch(await deletecollege()) }, 500)
+                      setTimeout(async() => { dispatch(await getCollege()) }, 1500)         
                     }
                     else {
                       if(sw == 1){
@@ -153,11 +166,66 @@ const onPressHandler2 = async (sw) => {
           console.log(error)
         }
       }
+const onPressHandler3 = async (sw) => {
+  console.log("Pressed 3")
+  const axios = require("axios");
+        const cheerio = require('cheerio');
+        const url = "https://makautwb.ac.in/page.php?id=340";
+        try{
+        const { data } = await axios.get(url);
+        const $ = cheerio.load(data);
+        const listItems = $(".text-danger");
+        let notices = [];
+
+        if($){
+        listItems.each((idx, el) => {    
+          const notice = { title: "", path: "" };     
+          notice.title = $(el).text();
+          notice.path = $(el).attr("href");
+         notices.push(notice);
+        });
+        
+          db.transaction((tx) => {
+            tx.executeSql(
+              "SELECT Title, Path FROM Users3",
+              [],
+              async (tx, results) => {
+                var len = results.rows.length;
+    
+                if (len > 0) {
+                  var temp = results.rows.item(0).Title
+                  for (let i = 0; i < notices.length; i++) {
+                    if (notices[i].title != temp) {
+                      await schedulePushNotification("University Notice (MAKAUT)", notices[i].title);
+                      dispatch(await refreshWbunive(true))
+                      setTimeout(async() => { dispatch(await deleteWbunive()) }, 500)
+                      setTimeout(async() => { dispatch(await getWbunive()) }, 1500)
+                    }
+                    else {
+                      if(sw == 1){
+                      await schedulePushNotification("University Notice (MAKAUT)", "No More New Messages");
+                      }
+                      break;
+                    }
+                  }
+    
+                }
+              }
+            )
+          })
+        } else {
+          console.log('Unable to fetch!');
+        }
+        }
+        catch(error){
+          console.log(error)
+        }
+      }
 
 export default function Home() {
   dispatch = useDispatch();
   today = new Date()
-  let tim = today.getHours() + ":" + today.getMinutes() + ":" + today.getSeconds();
+  let tim =today.getSeconds();
   const [expoPushToken, setExpoPushToken] = useState('');
   const [notification, setNotification] = useState(false);
   const [time, setTime] = useState(tim)
@@ -166,25 +234,88 @@ export default function Home() {
   const notificationListener = useRef();
   const responseListener = useRef();
 
+  const batt = async () => {
+    const battery = await Battery.isBatteryOptimizationEnabledAsync();
+    if (battery == true) {
+      Alert.alert('Warning','Please Turn Off Battery Optimisation. Otherwise the App will not work properly.',[
+        {text:'OK',onPress:()=>startActivityAsync(ActivityAction.IGNORE_BATTERY_OPTIMIZATION_SETTINGS)},
+        {text:'Cancel',onPress:()=>console.log('Cancel Pressed')}
+      ],{cancelable:true,
+        })
+    }
+  }
+
   const timehandler = async() => {
-    today = new Date()
-    let tim = today.getHours() + ":" + today.getMinutes() + ":" + today.getSeconds();
-    setTime(tim)
+    if ((await Network.getNetworkStateAsync()).isInternetReachable == true){
+    setLoading("")
+    setTime(0)
+    setTimeout(() => {
+      animation.current.play();
+      }, 2000)
+    dispatch(await getCities())
+    dispatch(await getCollege())
+    dispatch(await getWbunive())
     setTimeout(() => setLoading("Checking...."), 500)
     await onPressHandler(1);
     setTimeout(() => setLoading("Fetching Data From MAKAUT..."), 1000)
     await onPressHandler2(1);
-    setTimeout(() => setLoading("Fetching Data From BPPIMT..."), 2500)
-    setTimeout(() => setLoading("Upgrading Database...."), 4000)
+    setTimeout(() => setLoading("Fetching Data From BPPIMT..."), 3000)
+    await onPressHandler3(1);
+    setTimeout(() => setLoading("Upgrading Database...."), 4500)
     //await schedulePushNotification("University Notice (MAKAUT)", "No New Messages");
     setTimeout(() => setLoading(" "), 5500)
+    }
+    else{
+      setLoading("No Internet Connection")
+      Alert.alert('Connection Error','Please check your Internet Connection and try again.',[
+        {text:'OK',onPress:()=>console.log('Ok Pressed')}
+      ],{cancelable:true,
+        })
+    }
+  }
+  const wait = (timeout) => {
+    return new Promise(resolve => setTimeout(resolve, timeout));
   }
 
   useEffect(() => {
+    setTimeout(()=>{
+      batt() 
+      animation.current.play()
+    }, 5000);
+    setTimeout(async() =>{ 
+       if ((await Network.getNetworkStateAsync()).isInternetReachable == true){
+        setLoading("")
+      setTimeout(() => setLoading("Checking...."), 1000)
+    await onPressHandler(0);
+    setTimeout(() => setLoading("Fetching Data From MAKAUT..."), 3500)
+    await onPressHandler2(0);
+    setTimeout(() => setLoading("Fetching Data From BPPIMT..."), 6500)
+    await onPressHandler3(0);
+    setTimeout(() => setLoading("Upgrading Database...."), 8000)
+    setTimeout(() => setLoading(" "), 9500)
+       }
+       else{
+        setLoading("No Internet Connection")
+        Alert.alert('Connection Error','Please check your Internet Connection and try again.',[
+          {text:'OK',onPress:()=>console.log('Ok Pressed')}
+        ],{cancelable:true,
+          })
+
+          // while((await Network.getNetworkStateAsync()).isInternetReachable == false){
+          //   wait(1000).then(()=>{
+
+          //   })
+          // }
+       }
+    }, 100)
+    setInterval(()=>{
+      animation.current.play();
+    },40000)
     setInterval(() => {
-      today = new Date()
-      let tim = today.getHours() + ":" + today.getMinutes() + ":" + today.getSeconds();
-      setTime(tim)
+      setTime(time+50)
+      if(time>=900){
+        setTime(0)
+      }
     }, 50000)
     RegisterBackgroundTask()
     registerForPushNotificationsAsync().then(token => setExpoPushToken(token));
@@ -203,39 +334,42 @@ export default function Home() {
     };
   }, []);
 
+  const animation = useRef(null);
+
   return (
 
     <ImageBackground
-      style={{ flex: 1, backgroundColor: '#000' }}>
+      style={{ flex: 1, backgroundColor: '#4C37B1' }}>
       <View style={styles.container}>
         <View style={styles.contentCenter}>
-          <Image
-            source={
-              require('../utils/8600d76f089797d6078f2a5b52129aca.gif')
-            }
-            style={{
-              width: '100%',
-              height: '82%',
-              marginTop: -25,
-              marginLeft: 5
-            }}
-          />
-          <Text style={styles.textStyle}>
-            Last Checked: {time}
-          </Text>
+          
+        <LottieView
+        ref={animation}
+        source={require("../utils/animation_l0o2g2ci.json")}
+        style={styles.animation}
+        autoPlay={false}
+        loop={false}
+        speed={0.25}
+        resizeMode="cover"
+      />
+         
+          
           <Text style={styles.title}>
             {loading}
           </Text>
           <Pressable
             onPress={timehandler}
             hitSlop={{ top: 10, bottom: 10, right: 10, left: 10 }}
-            android_ripple={{ color: '#555' }}
-            style={({ pressed }) => ({ backgroundColor: pressed ? '#555' : '#1b1b1c', borderRadius: 7, marginTop: 25, })}
+            android_ripple={{ color: '#4C37B1' }}
+            style={({ pressed }) => ({ backgroundColor: pressed ? '#4C37B1' : '#3D2C8D', borderRadius: 7, marginTop: 260, })}
           >
             <Text style={styles.button}>
               Check Now
             </Text>
           </Pressable>
+          <Text style={styles.textStyle}>
+            Last Checked: {time}s ago
+          </Text>
         </View>
       </View>
     </ImageBackground>
@@ -249,11 +383,12 @@ const styles = StyleSheet.create({
   },
   title: {
     position: 'absolute',
-    bottom: 145,
+    bottom: 195,
     fontSize: 15,
     color: '#f4f4f4',
     //fontWeight: 'bold',
     textAlign: 'center',
+    marginBottom:50
 
   },
   contentCenter: {
@@ -261,24 +396,30 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   textStyle: {
-    position: 'absolute',
-    bottom: -80,
-    color: '#555',
+    position: 'relative',
+    marginTop: 80,
+    marginBottom: 50,
+    color: '#f4f4f4',
     padding: 5,
   },
   button: {
     // backgroundColor:'#1b1b1c',
     fontSize: 20,
-    padding: 8,
-    paddingHorizontal: 10,
+    padding: 10,
+    paddingHorizontal: 20,
     borderRadius: 7,
-    borderColor: '#2d2d2e',
+    borderColor: '#3D2C8D',
     fontFamily: 'sans-serif-condensed',
     borderWidth: 1,
     color: '#f4f4f4',
     position: 'relative',
 
-  }
+  },
+  animation: {
+    width: 150,
+    height: 300,
+    marginTop:80,
+  },
 });
 
 async function schedulePushNotification(screen, notice_title) {

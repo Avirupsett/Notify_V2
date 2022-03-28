@@ -4,13 +4,18 @@ export const UPGRADE_CITIES = 'UPGRADE_CITIES';
 export const DELETE_CITIES = 'DELETE_CITIES';
 export const GET_COLLEGE = 'GET_COLLEGE';
 export const DEL_COLLEGE = 'DEL_COLLEGE';
+export const REFRESH_CITIES = 'REFRESH_CITIES';
+export const REFRESH_COLLEGE = 'REFRESH_COLLEGE';
+export const GET_WBUNIVE = 'GET_WBUNIVE';
+export const DEL_WBUNIVE = 'DEL_WBUNIVE';
+export const REFRESH_WBUNIVE = 'REFRESH_WBUNIVE';
 
 // const API_URL = 'https://mocki.io/v1/69708724-6eed-47a6-957f-0ffd5e119d78';
 const API_URL = 'https://makaut1.ucanapply.com/smartexam/public/api/notice-data';
 
 const db = SQLite.openDatabase('db.testDb7')
 
-export const getCities = () => {
+export const getCities = async() => {
     try {
         return async dispatch => {
             const result = await fetch(API_URL, {
@@ -118,7 +123,7 @@ export const upgradeCities = () => {
         console.log(error);
     }
 }
-export const deleteCities = () => {
+export const deleteCities = async() => {
     try {
         return async dispatch => {
             db.transaction((tx) => {
@@ -204,7 +209,7 @@ export const getCollege = async() => {
     }
 }
 
-export const deletecollege = () => {
+export const deletecollege = async() => {
     try {
         return async dispatch => {
             db.transaction((tx) => {
@@ -219,6 +224,145 @@ export const deletecollege = () => {
             dispatch({
                 type: DEL_COLLEGE,
                 payload: "json"
+            });
+
+        }
+
+    }
+    catch (error) {
+        console.log(error);
+    }
+}
+
+export const refreshcities = async(r) => {
+    try {
+        return async dispatch => {
+           refresh=r
+
+            dispatch({
+                type: REFRESH_CITIES,
+                payload: refresh
+            });
+
+        }
+
+    }
+    catch (error) {
+        console.log(error);
+    }
+}
+export const refreshcollege = async(r) => {
+    try {
+        return async dispatch => {
+           refresh=r
+
+            dispatch({
+                type: REFRESH_COLLEGE,
+                payload: refresh
+            });
+
+        }
+
+    }
+    catch (error) {
+        console.log(error);
+    }
+}
+
+export const getWbunive = async() => {
+    try {
+        return async dispatch => {
+        const axios = require("axios");
+        const cheerio = require('cheerio');
+
+        const url = "https://makautwb.ac.in/page.php?id=340";
+
+        db.transaction((tx) => {
+            tx.executeSql(
+                "CREATE TABLE IF NOT EXISTS "
+                + "Users3 "
+                + "(ID INTEGER PRIMARY KEY AUTOINCREMENT, Title TEXT, Path TEXT);",
+            )
+        })
+        const { data } = await axios.get(url);
+        const $ = cheerio.load(data);
+
+        if ($) {
+            const listItems = $(".text-danger");
+            let notices=[]
+
+            db.transaction((tx) => {
+                tx.executeSql(
+                    "SELECT Title, Path FROM Users3",
+                    [],
+                    (tx, results) => {
+                        var len = results.rows.length;
+                        if (len == 0) {
+                            listItems.each((idx, el) => {
+                                const notice = { title: "", path: "" };
+                                notice.title = $(el).text();
+                                notice.path = $(el).attr("href");
+                                notices.push(notice);
+                                db.transaction((tx) => {
+                                    tx.executeSql(
+                                        "INSERT INTO Users3 (Title, Path) VALUES (?, ?);",
+                                        [notice.title, notice.path]
+
+                                    )
+                                })
+                            });
+
+                        }
+                    }
+                )
+            })
+
+             dispatch({
+                    type: GET_WBUNIVE,
+                    payload: notices
+                });
+            } else {
+                console.log('Unable to fetch!');
+            }
+        }
+    } catch (error) {
+        console.log(error);
+    }
+}
+
+export const deleteWbunive = async() => {
+    try {
+        return async dispatch => {
+            db.transaction((tx) => {
+                tx.executeSql(
+                    "DELETE FROM Users3",
+                    [],
+                    () => { },
+                    error => { console.log(error) }
+                )
+            })
+
+            dispatch({
+                type: DEL_WBUNIVE,
+                payload: "json"
+            });
+
+        }
+
+    }
+    catch (error) {
+        console.log(error);
+    }
+}
+
+export const refreshWbunive = async(r) => {
+    try {
+        return async dispatch => {
+           refresh=r
+
+            dispatch({
+                type: REFRESH_WBUNIVE,
+                payload: refresh
             });
 
         }

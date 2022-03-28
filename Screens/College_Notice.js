@@ -1,15 +1,18 @@
 import React,{useEffect,useState} from 'react';
-import { FlatList, RefreshControl, StyleSheet, Text, View } from 'react-native';
+import { FlatList, RefreshControl, StyleSheet, Text, View,ActivityIndicator,Alert } from 'react-native';
 import { Linking } from 'react-native';
 import Constants from 'expo-constants';
-import { useDispatch } from 'react-redux';
-import { deletecollege, getCollege } from '../redux/actions';
+import { useDispatch,useSelector } from 'react-redux';
+import { deletecollege, getCollege,refreshcollege } from '../redux/actions';
 import * as SQLite from 'expo-sqlite';
+import * as Network from 'expo-network';
 
 const db = SQLite.openDatabase('db.testDb7')
 
 const College_Notice = () => {
     const dispatch = useDispatch(); 
+    const { cities,notices,recities,renotice} =useSelector(state => state.userReducer);
+    const [indicate, setIndicate] = useState(true)
     /*const axios = require("axios");
     const cheerio = require('cheerio');
 
@@ -33,6 +36,7 @@ const College_Notice = () => {
                             var Path = results.rows.item(i).Path;
                              //console.log(Title);
                              temp.push({title:Title,path: Path});
+                             setIndicate(false)
                         }
                         setValue(temp);
                             
@@ -68,9 +72,11 @@ const College_Notice = () => {
 
     useEffect(async() => {
    // await scrapeData()
-   setInterval(async()=>{await setData()},2000)
-   dispatch(await getCollege())
+   setInterval(async()=>{await setData()},5000)
    await setData()
+   if ((await Network.getNetworkStateAsync()).isInternetReachable == true){
+   dispatch(await getCollege())
+   }
     }, [])
     
     const wait = (timeout) => {
@@ -79,11 +85,20 @@ const College_Notice = () => {
     const [refreshing, setRefreshing] = useState(false);
 
   const onRefresh = async() => {
+    if ((await Network.getNetworkStateAsync()).isInternetReachable == true){
     setRefreshing(true);
-   setTimeout(()=>{dispatch(deletecollege())}, 500)
+    setTimeout(async()=>{dispatch(await refreshcollege(false))},2000);
+   setTimeout(async()=>{dispatch(await deletecollege())}, 500)
   setTimeout(async()=>{dispatch(await getCollege())}, 1500)
    setTimeout(async()=>{await setData()}, 2500)
     wait(5000).then(() => setRefreshing(false));
+    }
+    else{
+      Alert.alert('Connection Error','Please check your Internet Connection and try again.',[
+        {text:'OK',onPress:()=>console.log('Ok Pressed')}
+      ],{cancelable:true,
+        })
+    }
   }
 
     return (
@@ -93,12 +108,16 @@ const College_Notice = () => {
       ]}>
           COLLEGE NOTICES
       </Text>
+      {renotice && <Text style={styles.refresh}>
+                New Message arrived! Pull Down to refresh ↓
+            </Text>}
+      {indicate && <ActivityIndicator size="large" color="#8BB6BF" animating={indicate} />}
       <FlatList
        refreshControl={
         <RefreshControl
           refreshing={refreshing}
           onRefresh={onRefresh}
-          colors={['#ff2517']}
+          colors={['#2B7A8B','#8BB6BF']}
         />
 }
           data={value}
@@ -118,51 +137,53 @@ const styles = StyleSheet.create({
   body: {
       flex: 1,
       alignItems: 'center',
-      backgroundColor: '#000000',
+      backgroundColor: '#2B7A8B',
   },
   text: {
-      fontSize: 35,
-      marginTop: Constants.statusBarHeight+1,
-      marginBottom: 10,
-      fontWeight: 'bold',
-      color: '#ffffff',
-      borderWidth: 1,
-      borderColor: '#ffffff',
-      width: '100%',
-      textAlign: 'center',
+    fontSize: 32,
+    marginTop: Constants.statusBarHeight+1,
+    marginBottom: 0,
+    fontWeight: 'bold',
+    color: '#ffffff',
+    borderWidth: 1,
+    borderBottomColor: '#ffffff',
+    borderTopColor: '#2B7A8B',
+    borderRightColor: '#2B7A8B',
+    borderLeftColor: '#2B7A8B',
+    padding: 10,
+    paddingTop:15,
+    width: '100%',
+    textAlign: 'center',
   },
-  input: {
-      width: 300,
-      borderWidth: 1,
-      borderColor: '#555',
-      borderRadius: 10,
-      backgroundColor: '#ffffff',
-      //textAlign: 'center',
-      fontSize: 20,
-      marginTop: 130,
-      marginBottom: 10,
-  },
+
   item: {
-      backgroundColor: '#242124',
-      borderWidth: 1,
-      borderColor: '#555',
-      borderRadius: 5,
-      fontFamily: 'Roboto',
-      // justifyContent: 'center',
-      // alignItems: 'center',
+    backgroundColor: '#4299AC',
+    borderWidth: 1,
+    borderBottomColor: '#8BB6BF',
+    borderTopColor: '#4299AC',
+    borderRightColor: '#4299AC',
+    borderLeftColor: '#4299AC',
+    borderRadius: 5,
+    fontFamily: 'Roboto',
   },
   title: {
-      fontSize: 20,
-      margin: 10,
-      color: '#ffffff',
-      fontFamily: 'sans-serif-condensed',
+    fontSize: 19,
+    marginBottom: 10,
+    marginTop: 10,
+    marginLeft:10,
+    marginRight:6,
+    color: '#ffffff',
+    fontFamily: 'sans-serif-condensed',
      
   },
-  subtitle: {
-      fontSize: 10,
-      margin: 10,
-      color: '#999999',
-  }
+  refresh: {
+    fontSize: 15,
+    backgroundColor: '#8BB6BF',
+    color: '#ffffff',
+    width: '100%',
+    textAlign: 'center',
+    padding:5
+}
 })
 
 export default College_Notice;

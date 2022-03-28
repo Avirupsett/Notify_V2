@@ -2,12 +2,12 @@
   "expo": {
     "name": "Notify",
     "slug": "Notify",
-    "version": "1.0.0",
+    "version": "2.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "splash": {
       "image": "./assets/splash.png",
-      "resizeMode": "contain",
+      "resizeMode": "cover",
       "backgroundColor": "#ffffff"
     },
 
@@ -25,7 +25,8 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#FFFFFF"
       },
-      "package": "com.deycharles20001.notify"
+      "package": "com.deycharles20001.notify",
+      "permissions": [ "WRITE_EXTERNAL_STORAGE", "READ_EXTERNAL_STORAGE" ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
